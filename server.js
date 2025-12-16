@@ -1,5 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const session = require("express-session");
 const Database = require("better-sqlite3");
 const path = require("path");
 
@@ -14,6 +15,90 @@ const LENGTHS = [7, 8.5, 10, 11.5, 13];
 // -------------------- MIDDLEWARE --------------------
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static("public"));
+
+app.use(
+  session({
+    secret: "dentsun-10-haneli-giris",
+    resave: false,
+    saveUninitialized: false
+  })
+);
+
+// -------------------- 10 HANELİ GİRİŞ KODU --------------------
+function sumDigits(n) {
+  return String(n).padStart(2, "0").split("").reduce((a, c) => a + Number(c), 0);
+}
+
+function twoDigits(n) {
+  return String(n).padStart(2, "0");
+}
+
+function generateLoginCode(d = new Date()) {
+  // ---- TARİH ----
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
+  const year = d.getFullYear();
+
+  const Sd = sumDigits(day);
+  const Sm = sumDigits(month);
+  const product = twoDigits(Sd * Sm);
+
+  const A = product[0];
+  const B = product[1];
+
+  const Y = String(year).split(""); // 2025 -> ["2","0","2","5"]
+
+  const left3 = `${Y[0]}${A}${Y[1]}`;      // 220
+  const right3 = `${Y[2]}${B}${Y[3]}`;    // 215
+
+  // ---- SAAT ----
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+
+  const h1 = Number(hh[0]);
+  const h2 = Number(hh[1]);
+  const m1 = Number(mm[0]);
+  const m2 = Number(mm[1]);
+
+  const inner = twoDigits(h2 * m1); // ortadakiler
+  const outer = twoDigits(h1 * m2); // dıştakiler
+
+  // ---- FİNAL 10 HANE ----
+  return `${outer[0]}${left3}${inner}${right3}${outer[1]}`;
+}
+
+// -------------------- AUTH --------------------
+function requireAuth(req, res, next) {
+  if (req.session.auth) return next();
+  res.redirect("/login");
+}
+
+// -------------------- LOGIN --------------------
+app.get("/login", (req, res) => {
+  res.send(`
+    <h2>Dentsun Implant Takip</h2>
+    <form method="POST">
+      <input name="code" maxlength="10" placeholder="10 haneli kod" autofocus>
+      <button>Giriş</button>
+    </form>
+  `);
+});
+
+app.post("/login", (req, res) => {
+  const userCode = req.body.code;
+  const serverCode = generateLoginCode(new Date());
+
+  if (userCode === serverCode) {
+    req.session.auth = true;
+    return res.redirect("/");
+  }
+
+  res.send("<h3>❌ Kod yanlış</h3><a href='/login'>Geri</a>");
+});
+
+app.get("/logout", (req, res) => {
+  req.session.destroy(() => res.redirect("/login"));
+});
 
 // -------------------- DB TABLOLARI --------------------
 db.prepare(`
@@ -51,7 +136,6 @@ CREATE TABLE IF NOT EXISTS stock_log (
   created_at TEXT
 )`).run();
 
-
 // -------------------- STOK İLK OLUŞUM --------------------
 for (const b of BRANCHES) {
   for (const d of DIAMETERS) {
@@ -64,27 +148,14 @@ for (const b of BRANCHES) {
   }
 }
 
-// -------------------- AUTH (TEK KULLANICI - BASİT) --------------------
-function requireAuth(req, res, next) {
-  next(); // şimdilik direkt geçiyor
-}
-
-// -------------------- STOK LOG FONKSİYONU --------------------
+// -------------------- STOK LOG --------------------
 function logStock(branch, diameter, length, qty, action) {
   db.prepare(`
     INSERT INTO stock_log
     (branch, diameter, length, qty, action, created_at)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(
-    branch,
-    diameter,
-    length,
-    qty,
-    action,
-    new Date().toLocaleString("tr-TR")
-  );
+  `).run(branch, diameter, length, qty, action, new Date().toLocaleString("tr-TR"));
 }
-
 
 // -------------------- ANA SAYFA --------------------
 app.get("/", requireAuth, (req, res) => {
@@ -231,317 +302,8 @@ onclick="return confirm('Stok geri eklensin mi?')">[Sil]</a>
 `);
 });
 
-// -------------------- STOK CSV --------------------
-app.get("/stock/csv", requireAuth, (req, res) => {
-  const branch = req.query.branch || BRANCHES[0];
-
-  const rows = db.prepare(`
-    SELECT diameter, length, qty
-    FROM stock
-    WHERE branch=?
-    ORDER BY diameter, length
-  `).all(branch);
-
-  let csv = "";
-  csv += `Şube,${branch}\n`;
-  csv += `Tarih,${new Date().toLocaleString("tr-TR")}\n\n`;
-  csv += "Çap / Uzunluk," + LENGTHS.join(",") + "\n";
-
-  DIAMETERS.forEach(d => {
-    let line = [d];
-    LENGTHS.forEach(l => {
-      const r = rows.find(x => x.diameter==d && x.length==l);
-      line.push(r ? r.qty : 0);
-    });
-    csv += line.join(",") + "\n";
-  });
-
-const safeBranch = branch
-  .replace(/ğ/g, "g")
-  .replace(/ü/g, "u")
-  .replace(/ş/g, "s")
-  .replace(/ı/g, "i")
-  .replace(/ö/g, "o")
-  .replace(/ç/g, "c")
-  .replace(/\s+/g, "_");
-
-res.setHeader(
-  "Content-Disposition",
-  `attachment; filename=Dentsun_Stok_${safeBranch}.csv`
-);
-
-
-  res.send(csv);
-});
-
-
-// -------------------- STOK KAYDET --------------------
-app.post("/stock", requireAuth, (req, res) => {
-  const b = req.body.branch;
-
-  for (const d of DIAMETERS) {
-    for (const l of LENGTHS) {
-      const v = Math.max(0, parseInt(req.body[`s_${d}_${l}`] || 0));
-      const old = db.prepare(`
-  SELECT qty FROM stock
-  WHERE branch=? AND diameter=? AND length=?
-`).get(b, d, l).qty;
-
-db.prepare(`
-  UPDATE stock SET qty=?
-  WHERE branch=? AND diameter=? AND length=?
-`).run(v, b, d, l);
-
-if (old !== v) {
-  logStock(b, d, l, v - old, "MANUEL_DUZENLEME");
-}
-
-    }
-  }
-  res.redirect("/?branch="+encodeURIComponent(b));
-});
-
-// -------------------- HASTA EKLE --------------------
-app.post("/patient/add", requireAuth, (req, res) => {
-  const b = req.body.branch;
-
-  const pid = db.prepare(`
-    INSERT INTO patients (branch, name)
-    VALUES (?, ?)
-  `).run(b, req.body.name).lastInsertRowid;
-
-  // dizi olarak geliyor artık
-  const diameters = [].concat(req.body.diameter || []);
-  const lengths   = [].concat(req.body.length || []);
-  const qtys      = [].concat(req.body.qty || []);
-
-  for (let i = 0; i < diameters.length; i++) {
-    const d = Number(diameters[i]);
-    const l = Number(lengths[i]);
-    const q = Number(qtys[i]);
-
-    if (!d || !l || !q || q <= 0) continue;
-
-    db.prepare(`
-      INSERT INTO implants (patient_id, diameter, length, qty)
-      VALUES (?, ?, ?, ?)
-    `).run(pid, d, l, q);
-
-    db.prepare(`
-      UPDATE stock SET qty = qty - ?
-      WHERE branch=? AND diameter=? AND length=?
-    `).run(q, b, d, l);
-
-
-
-  }
-
-  res.redirect("/?branch=" + encodeURIComponent(b));
-});
-
-// -------------------- HASTA GÜNCELLE --------------------
-app.post("/patient/update/:id", requireAuth, (req, res) => {
-  const id = req.params.id;
-  const branch = req.body.branch;
-  const name = req.body.name;
-
-  // 1️⃣ Hasta adını güncelle
-  db.prepare(`
-    UPDATE patients SET name=?
-    WHERE id=?
-  `).run(name, id);
-
-  // 2️⃣ Eski implantları al
-  const oldImplants = db.prepare(`
-    SELECT * FROM implants WHERE patient_id=?
-  `).all(id);
-
-  // 3️⃣ Eski implantları stoka geri ekle
-  oldImplants.forEach(i => {
-    db.prepare(`
-      UPDATE stock SET qty = qty + ?
-      WHERE branch=? AND diameter=? AND length=?
-    `).run(i.qty, branch, i.diameter, i.length);
-
-    logStock(branch, i.diameter, i.length, i.qty, "HASTA_DUZENLEME_GERI");
-  });
-
-  // 4️⃣ Eski implant kayıtlarını sil
-  db.prepare(`
-    DELETE FROM implants WHERE patient_id=?
-  `).run(id);
-
-  // 5️⃣ Yeni implantları ekle
-  const diameters = [].concat(req.body.diameter || []);
-  const lengths   = [].concat(req.body.length || []);
-  const qtys      = [].concat(req.body.qty || []);
-
-  for (let i = 0; i < diameters.length; i++) {
-    const d = Number(diameters[i]);
-    const l = Number(lengths[i]);
-    const q = Number(qtys[i]);
-
-    if (!d || !l || !q || q <= 0) continue;
-
-    db.prepare(`
-      INSERT INTO implants (patient_id, diameter, length, qty)
-      VALUES (?, ?, ?, ?)
-    `).run(id, d, l, q);
-
-    db.prepare(`
-      UPDATE stock SET qty = qty - ?
-      WHERE branch=? AND diameter=? AND length=?
-    `).run(q, branch, d, l);
-
-    logStock(branch, d, l, q, "HASTA_DUZENLEME_EKLE");
-  }
-
-  // 6️⃣ Ana sayfaya dön
-  res.redirect("/?branch=" + encodeURIComponent(branch));
-});
-
-
-
-// -------------------- HASTA SİL --------------------
-app.get("/patient/delete/:id", requireAuth, (req, res) => {
-  const id = req.params.id;
-  const branch = req.query.branch;
-
-  const imps = db.prepare(`
-    SELECT * FROM implants WHERE patient_id=?
-  `).all(id);
-
-  imps.forEach(i=>{
-    db.prepare(`
-      UPDATE stock SET qty = qty + ?
-      WHERE branch=? AND diameter=? AND length=?
-    `).run(i.qty, branch, i.diameter, i.length);
-logStock(branch, i.diameter, i.length, i.qty, "HASTA_SILME");
-  });
-
-
-
-
-  db.prepare(`DELETE FROM implants WHERE patient_id=?`).run(id);
-  db.prepare(`DELETE FROM patients WHERE id=?`).run(id);
-
-  res.redirect("/?branch="+encodeURIComponent(branch));
-});
-
 // -------------------- START --------------------
-app.listen(3000, () =>
-  console.log("Sunucu çalışıyor: http://localhost:3000")
-);
-
-
-app.get("/patient/edit/:id", requireAuth, (req, res) => {
-  const id = req.params.id;
-  const branch = req.query.branch;
-
-  const patient = db.prepare(
-    "SELECT * FROM patients WHERE id=?"
-  ).get(id);
-
-  const implants = db.prepare(
-    "SELECT * FROM implants WHERE patient_id=?"
-  ).all(id);
-
-  res.send(`
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8">
-  <title>Hasta Düzenle</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-
-<h2>Hasta Düzenle</h2>
-
-<form method="POST" action="/patient/update/${id}">
-  <input type="hidden" name="branch" value="${branch}">
-  <input name="name" value="${patient.name}" required><br><br>
-
-  <div id="implantRows"></div>
-
-  <button type="button" onclick="addRow()">+</button>
-  <br><br>
-  <button>Kaydet</button>
-</form>
-
-<script>
-const existing = ${JSON.stringify(implants)};
-let rowCount = 0;
-
-function addRow(d="", l="", q="") {
-  const row = document.createElement("div");
-  row.innerHTML =
-    '<select name="diameter">' +
-      '<option value="">Çap</option>' +
-      '${DIAMETERS.map(x=>`<option value="${x}">${x}</option>`).join("")}' +
-    '</select>' +
-
-    '<select name="length">' +
-      '<option value="">Uzunluk</option>' +
-      '${LENGTHS.map(x=>`<option value="${x}">${x}</option>`).join("")}' +
-    '</select>' +
-
-    '<input type="number" name="qty" style="width:60px">' +
-    '<button type="button" onclick="this.parentElement.remove()">❌</button><br>';
-
-  document.getElementById("implantRows").appendChild(row);
-
-  const selects = row.querySelectorAll("select");
-  selects[0].value = d;
-  selects[1].value = l;
-  row.querySelector("input").value = q;
-
-  rowCount++;
-}
-
-existing.forEach(i => addRow(i.diameter, i.length, i.qty));
-</script>
-
-
-
-</body>
-</html>
-`);
-});
-
-
-// -------------------- STOK LOG --------------------
-app.get("/logs", requireAuth, (req, res) => {
-  const rows = db.prepare(`
-    SELECT * FROM stock_log
-    ORDER BY id DESC
-    LIMIT 200
-  `).all();
-
-  res.send(`
-  <h2>Stok Log</h2>
-  <table border="1" cellpadding="5">
-    <tr>
-      <th>Tarih</th>
-      <th>Şube</th>
-      <th>Çap</th>
-      <th>Uzunluk</th>
-      <th>Adet</th>
-      <th>İşlem</th>
-    </tr>
-    ${rows.map(r => `
-      <tr>
-        <td>${r.created_at}</td>
-        <td>${r.branch}</td>
-        <td>${r.diameter}</td>
-        <td>${r.length}</td>
-        <td>${r.qty}</td>
-        <td>${r.action}</td>
-      </tr>
-    `).join("")}
-  </table>
-
-  <br>
-  <a href="/">← Geri</a>
-  `);
+app.listen(3000, () => {
+  console.log("Sunucu çalışıyor: http://localhost:3000");
+  console.log("LOGIN CODE:", generateLoginCode(new Date()));
 });
