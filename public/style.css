@@ -1,0 +1,493 @@
+body {
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  background: linear-gradient(180deg, #eef1f6, #e4e7ee);
+  color: #0f172a;
+  padding: 40px;
+}
+
+h1 {
+  font-size: 30px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+h2 {
+  margin-top: 35px;
+  font-size: 20px;
+}
+
+form, table, ul {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(14px);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+th, td {
+  padding: 10px;
+  text-align: center;
+}
+
+th {
+  background: #f1f5f9;
+}
+
+input, select {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+}
+
+button {
+  padding: 14px 28px;
+  border-radius: 18px;
+  border: none;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg,#3b82f6,#1e40af);
+  box-shadow: 0 12px 30px rgba(30,64,175,0.35);
+  cursor: pointer;
+  transition: all .25s ease;
+}
+
+button:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 20px 45px rgba(30,64,175,0.45);
+}
+
+ul {
+  list-style: none;
+}
+
+ul li {
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+
+/* ===============================
+   BACKGROUND – SOFT KOYU GRİ
+   =============================== */
+
+body {
+  background: linear-gradient(
+    180deg,
+    #d1d5db 0%,   /* üst: soft gri */
+    #c7ccd3 40%,
+    #bcc2c9 70%,
+    #b3b9c1 100%  /* alt: koyu ama tatlı */
+  );
+}
+
+/* Kartlar arkaplandan net ayrılsın */
+section,
+form {
+  background: #ffffff;
+}
+
+/* Kartlara biraz daha derinlik */
+section,
+form {
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+
+
+/* --- STOK INPUT AKILLI GÖRÜNÜM --- */
+
+/* Varsayılan: 0 olanlar küçük ve soluk */
+.stok-table input[type="number"],
+.stok-table input[type="text"] {
+  height: 32px;
+  font-size: 13px;
+  opacity: 0.55;
+  border-radius: 10px;
+  transition: 
+    all 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+/* Focus olunca (tıklanınca) büyüsün */
+.stok-table input:focus {
+  height: 40px;
+  font-size: 15px;
+  opacity: 1;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+}
+
+/* 0 olmayan değer girilince otomatik büyüsün */
+.stok-table input:not([value="0"]):not(:placeholder-shown) {
+  height: 40px;
+  font-size: 15px;
+  opacity: 1;
+  font-weight: 500;
+}
+
+/* 0 olanlar daha silik kalsın */
+.stok-table input[value="0"] {
+  background-color: rgba(255,255,255,0.7);
+}
+
+/* Hover’da hafif canlılık */
+.stok-table input:hover {
+  opacity: 0.85;
+}
+
+
+/* ================================
+   PREMIUM HOVER & FOCUS ANİMASYON
+   ================================ */
+
+/* Ortak geçiş ayarı */
+button,
+input,
+select {
+  transition:
+    background-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.18s ease,
+    border-color 0.25s ease;
+}
+
+/* INPUT & SELECT */
+input,
+select {
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background-color: #ffffff;
+}
+
+/* Hover: hafif yükselme */
+input:hover,
+select:hover {
+  transform: translateY(-1px);
+  border-color: rgba(59,130,246,0.4);
+}
+
+/* Focus: premium glow */
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow:
+    0 0 0 3px rgba(59,130,246,0.25),
+    0 8px 20px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+/* ------------------------------
+   BUTONLAR
+-------------------------------- */
+
+button {
+  border-radius: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Hover: yumuşak kaldırma */
+button:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 10px 25px rgba(0,0,0,0.15);
+}
+
+/* Active (tıklama anı) */
+button:active {
+  transform: translateY(0);
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.18);
+}
+
+/* Stoku Kaydet özel premium */
+button[type="submit"] {
+  background: linear-gradient(
+    135deg,
+    #2563eb,
+    #3b82f6
+  );
+  color: #fff;
+  border: none;
+}
+
+button[type="submit"]:hover {
+  background: linear-gradient(
+    135deg,
+    #1d4ed8,
+    #2563eb
+  );
+}
+
+/* ------------------------------
+   KART (Beyaz alanlar)
+-------------------------------- */
+
+.card,
+.section,
+.container > div {
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+}
+
+/* Kart hover: çok hafif hareket */
+.card:hover,
+.section:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 18px 40px rgba(0,0,0,0.12);
+}
+
+
+/* ================================
+   HASTA EKLE – KOMPAKT & PREMIUM
+   ================================ */
+
+/* Hasta Ekle ana kart */
+.hasta-ekle,
+#hasta-ekle,
+form[action*="patient"] {
+  max-width: 720px;
+  margin-top: 40px;
+  padding: 22px 26px;
+  background: rgba(255,255,255,0.92);
+  border-radius: 18px;
+  box-shadow:
+    0 14px 35px rgba(0,0,0,0.12);
+}
+
+/* Başlık */
+.hasta-ekle h2,
+#hasta-ekle h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: #1f2937;
+}
+
+/* Hasta adı input */
+.hasta-ekle input[type="text"],
+#hasta-ekle input[type="text"] {
+  width: 100%;
+  max-width: 360px;
+  height: 42px;
+  font-size: 14px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+
+/* Satır düzeni (Çap - Uzunluk - Adet) */
+.hasta-ekle .row,
+#hasta-ekle .row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* Select’ler küçültülüyor */
+.hasta-ekle select,
+#hasta-ekle select {
+  height: 38px;
+  font-size: 13px;
+  padding: 0 10px;
+  border-radius: 10px;
+}
+
+/* Adet input – daha küçük */
+.hasta-ekle input[name*="adet"],
+#hasta-ekle input[name*="adet"] {
+  width: 90px;
+  height: 36px;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Kaydet butonu – stoktan daha sakin */
+.hasta-ekle button,
+#hasta-ekle button {
+  margin-top: 12px;
+  padding: 10px 22px;
+  font-size: 14px;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    #334155,
+    #475569
+  );
+  color: #fff;
+}
+
+.hasta-ekle button:hover,
+#hasta-ekle button:hover {
+  background: linear-gradient(
+    135deg,
+    #1f2937,
+    #334155
+  );
+}
+
+
+/* =================================
+   STOK TABLOSU – AKILLI RENKLENDİRME
+   ================================= */
+
+/* Genel stok input */
+table input[type="number"] {
+  transition: all 0.25s ease;
+}
+
+/* 0 stok → silik / geri planda */
+table input[type="number"][value="0"] {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+}
+
+/* Düşük stok (1–2) → sarımsı uyarı */
+table input[type="number"][value="1"],
+table input[type="number"][value="2"] {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+/* 3 ve üzeri → normal (hiç dokunma) */
+table input[type="number"]:not([value="0"]):not([value="1"]):not([value="2"]) {
+  background-color: #ffffff;
+  color: #111827;
+}
+
+/* Hover’da hepsi biraz canlansın */
+table input[type="number"]:hover {
+  background-color: #ffffff;
+}
+
+
+/* =================================
+   TABLO SATIR HOVER – PREMIUM
+   ================================= */
+
+/* Satır hover */
+table tr {
+  transition: background-color 0.25s ease,
+              box-shadow 0.25s ease,
+              transform 0.18s ease;
+}
+
+/* Header hariç satırlar */
+table tr:not(:first-child):hover {
+  background-color: rgba(37, 99, 235, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.25);
+  transform: scale(1.01);
+}
+
+/* Hover’da inputlar daha net */
+table tr:not(:first-child):hover input[type="number"] {
+  background-color: #ffffff;
+  opacity: 1;
+}
+
+/* İlk sütun (çap) hover’da biraz vurgulu */
+table tr:not(:first-child):hover td:first-child {
+  font-weight: 600;
+  color: #1e40af;
+}
+
+
+/* =================================
+   KRİTİK STOKLARI ÖNE ÇIKARMA
+   (CSS ONLY – SIRALAMAYA ALTERNATİF)
+   ================================= */
+
+/* Satır içinde 0 veya 1–2 varsa */
+table tr:has(input[value="0"]),
+table tr:has(input[value="1"]),
+table tr:has(input[value="2"]) {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background-color: #fff7ed;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+/* 0 stok daha belirgin */
+table tr:has(input[value="0"]) {
+  background-color: #fff1f2;
+}
+
+/* Kritik satır başlığı */
+table tr:has(input[value="0"]) td:first-child,
+table tr:has(input[value="1"]) td:first-child,
+table tr:has(input[value="2"]) td:first-child {
+  font-weight: 700;
+  color: #991b1b;
+}
+
+
+/* =================================
+   ÜST MİNİ ÖZET BAR
+   ================================= */
+
+/* H1’i özet bar gibi kullanıyoruz */
+h1 {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(6px);
+
+  padding: 16px 24px;
+  margin: 0 auto 24px;
+
+  border-radius: 0 0 18px 18px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+/* H1 altına mini açıklama hissi */
+h1::after {
+  content: "stok durumu • hızlı kontrol ekranı";
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* Şube select’i de üstte sabit kalsın */
+form:first-of-type {
+  position: sticky;
+  top: 72px;
+  z-index: 19;
+  background: rgba(255,255,255,0.9);
+  padding: 10px 16px;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+}
+
+
+.stok-zero {
+  background-color: #f8d7da; /* kırmızı */
+}
+
+.stok-low {
+  background-color: #fff3cd; /* sarı */
+}
+
+td input {
+  width: 60px;
+  text-align: center;
+  border: none;
+  background: transparent;
+  font-weight: bold;
+}
+
+
+
+
+
