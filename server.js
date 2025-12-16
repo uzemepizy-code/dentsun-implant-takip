@@ -85,16 +85,23 @@ app.get("/login", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  const userCode = req.body.code;
-  const serverCode = generateLoginCode(new Date());
+  const userCode = (req.body.code || "").trim();
 
-  if (userCode === serverCode) {
+  const now = new Date();
+  const codes = [
+    generateLoginCode(new Date(now.getTime() - 60000)), // -1 dk
+    generateLoginCode(now),                              // şu an
+    generateLoginCode(new Date(now.getTime() + 60000))   // +1 dk
+  ];
+
+  if (codes.includes(userCode)) {
     req.session.auth = true;
     return res.redirect("/");
   }
 
-  res.send("<h3>❌ Kod yanlış</h3><a href='/login'>Geri</a>");
+  res.send("<h3>❌ Parola yanlış</h3><a href='/login'>Geri</a>");
 });
+
 
 app.get("/logout", (req, res) => {
   req.session.destroy(() => res.redirect("/login"));
