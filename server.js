@@ -87,12 +87,16 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res) => {
   const userCode = (req.body.code || "").trim();
 
-  const now = new Date();
-  const codes = [
-    generateLoginCode(new Date(now.getTime() - 60000)), // -1 dk
-    generateLoginCode(now),                              // şu an
-    generateLoginCode(new Date(now.getTime() + 60000))   // +1 dk
-  ];
+  // 🔥 TÜRKİYE SAATİNE SABİTLE
+  const now = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+  );
+
+  const codes = [];
+  for (let i = -2; i <= 2; i++) {
+    const d = new Date(now.getTime() + i * 60000);
+    codes.push(generateLoginCode(d));
+  }
 
   if (codes.includes(userCode)) {
     req.session.auth = true;
@@ -101,6 +105,7 @@ app.post("/login", (req, res) => {
 
   res.send("<h3>❌ Parola yanlış</h3><a href='/login'>Geri</a>");
 });
+
 
 
 app.get("/logout", (req, res) => {
