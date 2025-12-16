@@ -78,7 +78,7 @@ app.get("/login", (req, res) => {
   res.send(`
     <h2>Dentsun Implant Takip</h2>
     <form method="POST">
-      <input name="code" maxlength="10" placeholder="10 haneli kod" autofocus>
+      <input name="code" maxlength="10" placeholder="****" autofocus>
       <button>Giriş</button>
     </form>
   `);
