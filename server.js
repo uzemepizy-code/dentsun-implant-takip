@@ -120,6 +120,11 @@ app.get("/", requireAuth, (req, res) => {
 
 <h2>Stok (AnyRidge)</h2>
 
+<a href="/logs" style="display:inline-block;margin-bottom:10px;">
+  📜 Stok Loglarını Gör
+</a>
+
+
 <form method="POST" action="/stock">
 <input type="hidden" name="branch" value="${branch}">
 <table>
@@ -157,24 +162,49 @@ return `<td class="${cls}">
 <hr>
 
 <h2>Hasta Ekle</h2>
+
 <form method="POST" action="/patient/add">
-<input type="hidden" name="branch" value="${branch}">
-<input name="name" placeholder="Hasta adı" required><br><br>
+  <input type="hidden" name="branch" value="${branch}">
+  <input name="name" placeholder="Hasta adı" required><br><br>
 
-${Array.from({ length: 4 }, (_, i) => i + 1).map(i=>`
+  <div id="implantRows"></div>
+
+  <button type="button" onclick="addRow()">+</button>
+  <br><br>
+  <button>Kaydet</button>
+</form>
+
+<script>
+let rowCount = 0;
+const maxRows = 20;
+
+function addRow() {
+  if (rowCount >= maxRows) return;
+
+  const row = document.createElement("div");
+  row.innerHTML =
+  '<select name="diameter">' +
+    '<option value="">Çap</option>' +
+    '${DIAMETERS.map(d => `<option value="${d}">${d}</option>`).join("")}' +
+  '</select>' +
+
+  '<select name="length">' +
+    '<option value="">Uzunluk</option>' +
+    '${LENGTHS.map(l => `<option value="${l}">${l}</option>`).join("")}' +
+  '</select>' +
+
+  '<input type="number" name="qty" placeholder="adet" style="width:60px">' +
+  '<button type="button" onclick="this.parentElement.remove()">❌</button><br>';
+
+  document.getElementById("implantRows").appendChild(row);
+  rowCount++;
+}
+
+// sayfa açılınca 4 satır
+for (let i = 0; i < 4; i++) addRow();
+</script>
 
 
-<select name="d${i}">
-  <option value="">Çap</option>
-  ${DIAMETERS.map(d=>`<option value="${d}">${d}</option>`).join("")}
-</select>
-<select name="l${i}">
-  <option value="">Uzunluk</option>
-  ${LENGTHS.map(l=>`<option value="${l}">${l}</option>`).join("")}
-</select>
-<input type="number" name="q${i}" placeholder="adet">
-<br>
-`).join("")}
 
 <br>
 <button>Kaydet</button>
@@ -186,10 +216,13 @@ ${Array.from({ length: 4 }, (_, i) => i + 1).map(i=>`
 <ul>
 ${patients.map(p=>`
 <li>
-<b>${p.name}</b>
+<a href="/patient/edit/${p.id}?branch=${branch}">
+  <b>${p.name}</b>
+</a>
 <a href="/patient/delete/${p.id}?branch=${branch}"
 onclick="return confirm('Stok geri eklensin mi?')">[Sil]</a>
 </li>
+
 `).join("")}
 </ul>
 
@@ -271,31 +304,100 @@ if (old !== v) {
 // -------------------- HASTA EKLE --------------------
 app.post("/patient/add", requireAuth, (req, res) => {
   const b = req.body.branch;
+
   const pid = db.prepare(`
     INSERT INTO patients (branch, name)
     VALUES (?, ?)
   `).run(b, req.body.name).lastInsertRowid;
 
-  for (let i=1; i<=12; i++) {
+  // dizi olarak geliyor artık
+  const diameters = [].concat(req.body.diameter || []);
+  const lengths   = [].concat(req.body.length || []);
+  const qtys      = [].concat(req.body.qty || []);
 
-    if (req.body[`d${i}`] && req.body[`q${i}`]>0) {
-      const d = Number(req.body[`d${i}`]);
-      const l = Number(req.body[`l${i}`]);
-      const q = Number(req.body[`q${i}`]);
+  for (let i = 0; i < diameters.length; i++) {
+    const d = Number(diameters[i]);
+    const l = Number(lengths[i]);
+    const q = Number(qtys[i]);
 
-      db.prepare(`
-        INSERT INTO implants (patient_id, diameter, length, qty)
-        VALUES (?, ?, ?, ?)
-      `).run(pid, d, l, q);
+    if (!d || !l || !q || q <= 0) continue;
 
-      db.prepare(`
-        UPDATE stock SET qty = qty - ?
-        WHERE branch=? AND diameter=? AND length=?
-      `).run(q, b, d, l);
-logStock(b, d, l, -q, "HASTA_EKLEME");
-    }
+    db.prepare(`
+      INSERT INTO implants (patient_id, diameter, length, qty)
+      VALUES (?, ?, ?, ?)
+    `).run(pid, d, l, q);
+
+    db.prepare(`
+      UPDATE stock SET qty = qty - ?
+      WHERE branch=? AND diameter=? AND length=?
+    `).run(q, b, d, l);
+
+
+
   }
-  res.redirect("/?branch="+encodeURIComponent(b));
+
+  res.redirect("/?branch=" + encodeURIComponent(b));
+});
+
+// -------------------- HASTA GÜNCELLE --------------------
+app.post("/patient/update/:id", requireAuth, (req, res) => {
+  const id = req.params.id;
+  const branch = req.body.branch;
+  const name = req.body.name;
+
+  // 1️⃣ Hasta adını güncelle
+  db.prepare(`
+    UPDATE patients SET name=?
+    WHERE id=?
+  `).run(name, id);
+
+  // 2️⃣ Eski implantları al
+  const oldImplants = db.prepare(`
+    SELECT * FROM implants WHERE patient_id=?
+  `).all(id);
+
+  // 3️⃣ Eski implantları stoka geri ekle
+  oldImplants.forEach(i => {
+    db.prepare(`
+      UPDATE stock SET qty = qty + ?
+      WHERE branch=? AND diameter=? AND length=?
+    `).run(i.qty, branch, i.diameter, i.length);
+
+    logStock(branch, i.diameter, i.length, i.qty, "HASTA_DUZENLEME_GERI");
+  });
+
+  // 4️⃣ Eski implant kayıtlarını sil
+  db.prepare(`
+    DELETE FROM implants WHERE patient_id=?
+  `).run(id);
+
+  // 5️⃣ Yeni implantları ekle
+  const diameters = [].concat(req.body.diameter || []);
+  const lengths   = [].concat(req.body.length || []);
+  const qtys      = [].concat(req.body.qty || []);
+
+  for (let i = 0; i < diameters.length; i++) {
+    const d = Number(diameters[i]);
+    const l = Number(lengths[i]);
+    const q = Number(qtys[i]);
+
+    if (!d || !l || !q || q <= 0) continue;
+
+    db.prepare(`
+      INSERT INTO implants (patient_id, diameter, length, qty)
+      VALUES (?, ?, ?, ?)
+    `).run(id, d, l, q);
+
+    db.prepare(`
+      UPDATE stock SET qty = qty - ?
+      WHERE branch=? AND diameter=? AND length=?
+    `).run(q, branch, d, l);
+
+    logStock(branch, d, l, q, "HASTA_DUZENLEME_EKLE");
+  }
+
+  // 6️⃣ Ana sayfaya dön
+  res.redirect("/?branch=" + encodeURIComponent(branch));
 });
 
 
@@ -330,3 +432,116 @@ logStock(branch, i.diameter, i.length, i.qty, "HASTA_SILME");
 app.listen(3000, () =>
   console.log("Sunucu çalışıyor: http://localhost:3000")
 );
+
+
+app.get("/patient/edit/:id", requireAuth, (req, res) => {
+  const id = req.params.id;
+  const branch = req.query.branch;
+
+  const patient = db.prepare(
+    "SELECT * FROM patients WHERE id=?"
+  ).get(id);
+
+  const implants = db.prepare(
+    "SELECT * FROM implants WHERE patient_id=?"
+  ).all(id);
+
+  res.send(`
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Hasta Düzenle</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<h2>Hasta Düzenle</h2>
+
+<form method="POST" action="/patient/update/${id}">
+  <input type="hidden" name="branch" value="${branch}">
+  <input name="name" value="${patient.name}" required><br><br>
+
+  <div id="implantRows"></div>
+
+  <button type="button" onclick="addRow()">+</button>
+  <br><br>
+  <button>Kaydet</button>
+</form>
+
+<script>
+const existing = ${JSON.stringify(implants)};
+let rowCount = 0;
+
+function addRow(d="", l="", q="") {
+  const row = document.createElement("div");
+  row.innerHTML =
+    '<select name="diameter">' +
+      '<option value="">Çap</option>' +
+      '${DIAMETERS.map(x=>`<option value="${x}">${x}</option>`).join("")}' +
+    '</select>' +
+
+    '<select name="length">' +
+      '<option value="">Uzunluk</option>' +
+      '${LENGTHS.map(x=>`<option value="${x}">${x}</option>`).join("")}' +
+    '</select>' +
+
+    '<input type="number" name="qty" style="width:60px">' +
+    '<button type="button" onclick="this.parentElement.remove()">❌</button><br>';
+
+  document.getElementById("implantRows").appendChild(row);
+
+  const selects = row.querySelectorAll("select");
+  selects[0].value = d;
+  selects[1].value = l;
+  row.querySelector("input").value = q;
+
+  rowCount++;
+}
+
+existing.forEach(i => addRow(i.diameter, i.length, i.qty));
+</script>
+
+
+
+</body>
+</html>
+`);
+});
+
+
+// -------------------- STOK LOG --------------------
+app.get("/logs", requireAuth, (req, res) => {
+  const rows = db.prepare(`
+    SELECT * FROM stock_log
+    ORDER BY id DESC
+    LIMIT 200
+  `).all();
+
+  res.send(`
+  <h2>Stok Log</h2>
+  <table border="1" cellpadding="5">
+    <tr>
+      <th>Tarih</th>
+      <th>Şube</th>
+      <th>Çap</th>
+      <th>Uzunluk</th>
+      <th>Adet</th>
+      <th>İşlem</th>
+    </tr>
+    ${rows.map(r => `
+      <tr>
+        <td>${r.created_at}</td>
+        <td>${r.branch}</td>
+        <td>${r.diameter}</td>
+        <td>${r.length}</td>
+        <td>${r.qty}</td>
+        <td>${r.action}</td>
+      </tr>
+    `).join("")}
+  </table>
+
+  <br>
+  <a href="/">← Geri</a>
+  `);
+});
